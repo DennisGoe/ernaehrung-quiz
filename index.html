@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernspiel: Enterale & parenterale Ernährung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E7ECEE;
+    --surface:#FFFFFF;
+    --ink:#15282E;
+    --muted:#5C7177;
+    --line:#D2DBDE;
+    --petrol:#0E5A66;
+    --petrol-dark:#0A444E;
+    --enteral:#BE6F26;
+    --enteral-soft:#FBEFE1;
+    --parenteral:#2F52BE;
+    --parenteral-soft:#E8ECFB;
+    --correct:#2C7B52;
+    --correct-soft:#E4F2EA;
+    --wrong:#BE3A2C;
+    --wrong-soft:#FAE7E4;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(16,40,46,.06),0 10px 30px rgba(16,40,46,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    min-height:100vh;
+    padding:18px 16px 40px;
+    display:flex;justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{width:100%;max-width:600px}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+
+  /* ---- Infusionsleitung / Fortschritt ---- */
+  .flowline{
+    position:relative;height:10px;border-radius:99px;
+    background:#fff;border:1px solid var(--line);overflow:hidden;margin-bottom:6px;
+  }
+  .flowline__fill{
+    position:absolute;inset:0 auto 0 0;width:0%;
+    background:linear-gradient(90deg,var(--petrol),#1A7E8C);
+    border-radius:99px;transition:width .45s cubic-bezier(.4,0,.2,1);
+  }
+  .flowmeta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:22px}
+  .flowmeta b{color:var(--petrol-dark)}
+
+  /* ---- Karten ---- */
+  .card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:26px 22px;
+  }
+
+  /* ---- Startbildschirm ---- */
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--petrol);
+    display:flex;align-items:center;gap:8px;margin-bottom:14px;
+  }
+  .eyebrow::before{content:"";width:26px;height:2px;background:var(--petrol);border-radius:2px}
+  h1{font-size:27px;font-weight:700;line-height:1.18;letter-spacing:-.01em;margin-bottom:12px}
+  .lead{color:var(--muted);font-size:15.5px;margin-bottom:22px}
+  .howto{list-style:none;display:grid;gap:12px;margin-bottom:26px}
+  .howto li{display:flex;gap:12px;font-size:14.5px;align-items:flex-start}
+  .howto .n{
+    flex:none;width:24px;height:24px;border-radius:7px;background:var(--petrol);color:#fff;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .legend{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;
+    padding:6px 11px;border-radius:99px;border:1px solid var(--line);background:#fff;
+  }
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot--e{background:var(--enteral)} .dot--p{background:var(--parenteral)}
+
+  /* ---- Buttons ---- */
+  .btn{
+    font-family:inherit;font-size:16px;font-weight:600;color:#fff;background:var(--petrol);
+    border:none;border-radius:11px;padding:15px 22px;width:100%;cursor:pointer;
+    transition:background .15s,transform .05s;
+  }
+  .btn:hover{background:var(--petrol-dark)}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:3px solid #8FD0DA;outline-offset:2px}
+  .btn--ghost{background:#fff;color:var(--petrol-dark);border:1.5px solid var(--line)}
+  .btn--ghost:hover{background:#F3F7F8;border-color:#BFCBCE}
+
+  /* ---- Frage ---- */
+  .qtag{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;padding:4px 9px;border-radius:6px;display:inline-block;margin-bottom:14px;
+  }
+  .qtag--wissen{background:#E5EEF0;color:var(--petrol-dark)}
+  .qtag--zuordnen{background:#EDEAF6;color:#3A2E78}
+  .question{font-size:19px;font-weight:600;line-height:1.32;margin-bottom:20px;letter-spacing:-.005em}
+
+  .options{display:grid;gap:10px}
+  .opt{
+    font-family:inherit;font-size:15px;text-align:left;color:var(--ink);
+    background:#fff;border:1.5px solid var(--line);border-radius:11px;
+    padding:14px 15px;cursor:pointer;display:flex;align-items:center;gap:12px;
+    transition:border-color .12s,background .12s;width:100%;
+  }
+  .opt:hover:not(:disabled){border-color:var(--petrol);background:#F6FAFB}
+  .opt:focus-visible{outline:3px solid #8FD0DA;outline-offset:2px}
+  .opt:disabled{cursor:default}
+  .opt .key{
+    flex:none;width:25px;height:25px;border-radius:7px;border:1.5px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;transition:.12s;
+  }
+  .opt.correct{border-color:var(--correct);background:var(--correct-soft)}
+  .opt.correct .key{background:var(--correct);border-color:var(--correct);color:#fff}
+  .opt.wrong{border-color:var(--wrong);background:var(--wrong-soft)}
+  .opt.wrong .key{background:var(--wrong);border-color:var(--wrong);color:#fff}
+  .opt.dim{opacity:.55}
+
+  /* ---- Zuordnen ---- */
+  .assign{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .route{
+    font-family:inherit;cursor:pointer;border-radius:12px;padding:18px 14px;text-align:center;
+    border:1.5px solid var(--line);background:#fff;transition:.12s;
+  }
+  .route:focus-visible{outline:3px solid #8FD0DA;outline-offset:2px}
+  .route__label{font-size:16px;font-weight:700;margin-bottom:3px}
+  .route__sub{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+  .route--e:hover:not(:disabled){border-color:var(--enteral);background:var(--enteral-soft)}
+  .route--p:hover:not(:disabled){border-color:var(--parenteral);background:var(--parenteral-soft)}
+  .route--e .route__label{color:var(--enteral)} .route--p .route__label{color:var(--parenteral)}
+  .route:disabled{cursor:default}
+  .route.correct{border-color:var(--correct);background:var(--correct-soft)}
+  .route.correct .route__label{color:var(--correct)}
+  .route.wrong{border-color:var(--wrong);background:var(--wrong-soft)}
+  .route.wrong .route__label{color:var(--wrong)}
+  .route.dim{opacity:.5}
+
+  /* ---- Feedback ---- */
+  .feedback{margin-top:18px;border-radius:11px;padding:14px 15px;font-size:14.5px;display:none}
+  .feedback.show{display:block;animation:rise .25s ease}
+  .feedback--ok{background:var(--correct-soft);border:1px solid #BDE0CC}
+  .feedback--no{background:var(--wrong-soft);border:1px solid #F0C8C2}
+  .feedback__head{font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .feedback--ok .feedback__head{color:var(--correct)}
+  .feedback--no .feedback__head{color:var(--wrong)}
+  .feedback__body{color:#384a4f}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .next-wrap{margin-top:18px;display:none}
+  .next-wrap.show{display:block}
+
+  /* ---- Ergebnis ---- */
+  .result{text-align:center}
+  .score-ring{
+    width:150px;height:150px;border-radius:50%;margin:6px auto 18px;display:flex;
+    align-items:center;justify-content:center;flex-direction:column;
+    background:conic-gradient(var(--petrol) var(--deg,0deg),#E2E9EB 0deg);
+  }
+  .score-ring__inner{
+    width:118px;height:118px;border-radius:50%;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .score-ring__num{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:600;line-height:1;color:var(--petrol-dark)}
+  .score-ring__pts{font-size:12px;color:var(--muted);margin-top:4px}
+  .verdict{font-size:20px;font-weight:700;margin-bottom:8px}
+  .verdict-sub{color:var(--muted);font-size:15px;margin-bottom:24px}
+
+  @media (max-width:430px){
+    .card{padding:22px 17px}
+    h1{font-size:24px}
+    .question{font-size:18px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Fortschritt -->
+  <div id="progress" style="display:none">
+    <div class="flowline"><div class="flowline__fill" id="flowFill"></div></div>
+    <div class="flowmeta">
+      <span>Frage <b id="qNow" class="mono">1</b> / <span id="qTotal" class="mono">20</span></span>
+      <span><b id="ptNow" class="mono">0</b> Punkte</span>
+    </div>
+  </div>
+
+  <!-- START -->
+  <section class="card" id="startScreen">
+    <div class="eyebrow">Pflege · Lernsicherung</div>
+    <h1>Enterale &amp; parenterale Ernährung</h1>
+    <p class="lead">Ein kurzes Quiz zum Festigen nach dem Unterricht – allein spielbar, mit sofortiger Rückmeldung und Begründung zu jeder Frage.</p>
+    <ul class="howto">
+      <li><span class="n">1</span><span>Beantworte jede Frage durch Antippen – du bekommst sofort, ob es stimmt.</span></li>
+      <li><span class="n">2</span><span>Lies die kurze Begründung, dann mit „Weiter" zur nächsten Frage.</span></li>
+      <li><span class="n">3</span><span>Am Ende siehst du dein Ergebnis und kannst neu starten.</span></li>
+    </ul>
+    <div class="legend">
+      <span class="chip"><span class="dot dot--e"></span>Enteral = über den Magen-Darm-Trakt</span>
+      <span class="chip"><span class="dot dot--p"></span>Parenteral = über die Vene</span>
+    </div>
+    <button class="btn" id="startBtn">Quiz starten</button>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="card" id="quizScreen" style="display:none">
+    <span class="qtag" id="qtag"></span>
+    <h2 class="question" id="qText"></h2>
+    <div id="answerArea"></div>
+    <div class="feedback" id="feedback">
+      <div class="feedback__head" id="fbHead"></div>
+      <div class="feedback__body" id="fbBody"></div>
+    </div>
+    <div class="next-wrap" id="nextWrap">
+      <button class="btn" id="nextBtn">Weiter</button>
+    </div>
+  </section>
+
+  <!-- ERGEBNIS -->
+  <section class="card result" id="resultScreen" style="display:none">
+    <div class="eyebrow" style="justify-content:center">Ergebnis</div>
+    <div class="score-ring" id="ring">
+      <div class="score-ring__inner">
+        <span class="score-ring__num" id="rPct">0%</span>
+        <span class="score-ring__pts" id="rPts">0 / 20 Punkte</span>
+      </div>
+    </div>
+    <div class="verdict" id="rVerdict"></div>
+    <p class="verdict-sub" id="rSub"></p>
+    <button class="btn btn--ghost" id="againBtn">Noch einmal spielen</button>
+  </section>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  // ---------- Wissensfragen ----------
+  {type:"mc", q:"Was bedeutet „enterale Ernährung“?",
+   options:[
+     {t:"Ernährung unter Umgehung des Magen-Darm-Trakts",c:false},
+     {t:"Ernährung über den (funktionsfähigen) Magen-Darm-Trakt",c:true},
+     {t:"Ernährung ausschließlich über die Vene",c:false},
+     {t:"Ernährung nur per Dauerinfusion",c:false}],
+   why:"Enteral kommt von „Enteron“ (Darm): Die Nährstoffe gelangen über den Magen-Darm-Trakt, meist über eine Sonde, in den Körper."},
+
+  {type:"mc", q:"Welche Aussage zur parenteralen Ernährung trifft zu?",
+   options:[
+     {t:"Sie erfolgt über eine Magensonde",c:false},
+     {t:"Sie umgeht den Magen-Darm-Trakt und erfolgt intravenös",c:true},
+     {t:"Sie ist immer der enteralen Ernährung vorzuziehen",c:false},
+     {t:"Sie wird über eine PEG verabreicht",c:false}],
+   why:"Parenteral heißt „am Darm vorbei“: Die Nährstoffe werden direkt in die Vene gegeben."},
+
+  {type:"mc", q:"Wie lautet das Grundprinzip der Ernährungstherapie?",
+   options:[
+     {t:"Parenteral vor enteral",c:false},
+     {t:"Wenn der Darm funktioniert, nutze ihn",c:true},
+     {t:"Immer beide Wege kombinieren",c:false},
+     {t:"So lange wie möglich nüchtern lassen",c:false}],
+   why:"Die enterale Ernährung ist physiologischer, erhält die Darmfunktion und hat weniger Komplikationen – daher hat sie Vorrang, solange der GI-Trakt nutzbar ist."},
+
+  {type:"mc", q:"Wofür steht die Abkürzung PEG?",
+   options:[
+     {t:"Parenterale Ernährungsgabe",c:false},
+     {t:"Perkutane endoskopische Gastrostomie",c:true},
+     {t:"Periphere enterale Glukoselösung",c:false},
+     {t:"Postoperative Ernährungsgabe",c:false}],
+   why:"Die PEG ist ein durch die Bauchdecke (perkutan) endoskopisch angelegter Zugang in den Magen (Gastrostomie)."},
+
+  {type:"mc", q:"Welche Maßnahme senkt das Aspirationsrisiko bei Sondenkost am stärksten?",
+   options:[
+     {t:"Flachlagerung während der Gabe",c:false},
+     {t:"Oberkörperhochlagerung (ca. 30–45°)",c:true},
+     {t:"Möglichst schnelle Bolusgabe",c:false},
+     {t:"Gabe im Liegen ohne Kontrolle",c:false}],
+   why:"Eine Oberkörperhochlagerung von 30–45° während und nach der Gabe vermindert Reflux und damit die Aspirationsgefahr."},
+
+  {type:"mc", q:"Welche Situation ist eine typische Kontraindikation für die enterale Ernährung?",
+   options:[
+     {t:"Schluckstörung (Dysphagie)",c:false},
+     {t:"Bewusstlosigkeit",c:false},
+     {t:"Mechanischer Ileus / akutes Abdomen",c:true},
+     {t:"Tumor im Mund-Rachen-Raum",c:false}],
+   why:"Bei Ileus, akutem Abdomen oder schwerer GI-Blutung darf der Darm nicht belastet werden – dann ist die enterale Ernährung kontraindiziert. Die anderen Punkte sind eher Indikationen."},
+
+  {type:"mc", q:"Warum wird eine Ernährungssonde regelmäßig (z. B. vor und nach jeder Gabe) gespült?",
+   options:[
+     {t:"Um die Sondenkost zu verdünnen",c:false},
+     {t:"Um ein Verstopfen der Sonde zu verhindern",c:true},
+     {t:"Um den Patienten heimlich zu sedieren",c:false},
+     {t:"Spülen ist eigentlich nicht nötig",c:false}],
+   why:"Spülen (meist mit Wasser) hält die Sonde frei und verhindert ein Verkleben/Verstopfen durch Nahrungs- oder Medikamentenreste."},
+
+  {type:"mc", q:"Welche Komplikation ist typisch für die zentralvenöse parenterale Ernährung?",
+   options:[
+     {t:"Obstipation",c:false},
+     {t:"Katheterassoziierte Infektion bis zur Sepsis",c:true},
+     {t:"Karies",c:false},
+     {t:"Dislokation der Magensonde",c:false}],
+   why:"Der zentrale Venenkatheter ist eine Eintrittspforte für Erreger. Aseptisches Arbeiten ist Pflicht, um Infektion und Sepsis zu vermeiden."},
+
+  {type:"mc", q:"Hochkonzentrierte (hochosmolare) Nährlösungen müssen verabreicht werden über …",
+   options:[
+     {t:"eine periphere Verweilkanüle",c:false},
+     {t:"einen zentralen Venenkatheter (ZVK)",c:true},
+     {t:"eine Magensonde",c:false},
+     {t:"eine subkutane Infusion",c:false}],
+   why:"Hochosmolare Lösungen reizen periphere Venen stark. Sie werden über einen ZVK in eine großlumige, schnell durchströmte Vene gegeben."},
+
+  {type:"mc", q:"Was enthält eine vollständige (bilanzierte) parenterale Ernährung typischerweise?",
+   options:[
+     {t:"nur Glukose",c:false},
+     {t:"nur Aminosäuren und Fette",c:false},
+     {t:"Kohlenhydrate, Aminosäuren, Fette, Elektrolyte, Vitamine und Spurenelemente",c:true},
+     {t:"ausschließlich Elektrolytlösung",c:false}],
+   why:"Eine vollständige parenterale Ernährung (oft als Dreikammerbeutel / All-in-One) deckt alle Makro- und Mikronährstoffe ab."},
+
+  {type:"mc", q:"Was ist bei der Gabe von Medikamenten über eine Sonde zu beachten?",
+   options:[
+     {t:"Mehrere Medikamente gemeinsam unzerkleinert eingeben",c:false},
+     {t:"Medikamente einzeln geben und die Sonde dazwischen spülen",c:true},
+     {t:"Retardtabletten grundsätzlich mörsern",c:false},
+     {t:"Medikamente direkt in den Sondenkostbeutel geben",c:false}],
+   why:"Geeignete Medikamente werden einzeln verabreicht, dazwischen wird gespült. Retard- und magensaftresistente Formen dürfen in der Regel nicht gemörsert werden."},
+
+  {type:"mc", q:"Das Refeeding-Syndrom tritt vor allem auf bei …",
+   options:[
+     {t:"zu schnellem Nahrungsaufbau nach längerer Mangelernährung",c:true},
+     {t:"zu langsamer Nahrungssteigerung",c:false},
+     {t:"ausschließlich enteraler Ernährung",c:false},
+     {t:"erhöhter Flüssigkeitszufuhr allein",c:false}],
+   why:"Nach längerem Fasten/Mangelernährung kann ein zu rascher Kostaufbau gefährliche Elektrolytverschiebungen (v. a. Phosphat) auslösen – daher langsamer, kontrollierter Aufbau."},
+
+  {type:"mc", q:"Welche Maßnahme beugt bei einer PEG dem „Buried-Bumper-Syndrom“ vor?",
+   options:[
+     {t:"Die PEG nie bewegen",c:false},
+     {t:"Regelmäßiges Mobilisieren und Drehen der Sonde nach Standard",c:true},
+     {t:"Täglicher Sondenwechsel",c:false},
+     {t:"Die Eintrittsstelle nicht reinigen",c:false}],
+   why:"Durch regelmäßiges Lösen, leichtes Hineinschieben und Drehen der PEG (nach hausinternem Standard) wird ein Einwachsen der inneren Halteplatte in die Magenwand vermieden."},
+
+  {type:"mc", q:"Auch bei vollständiger Sondenernährung bleibt wichtig …",
+   options:[
+     {t:"keine Mundpflege nötig, da nicht gegessen wird",c:false},
+     {t:"regelmäßige Mund- und Zahnpflege",c:true},
+     {t:"Flüssigkeit ausschließlich über die Vene",c:false},
+     {t:"strikte Bettruhe ohne Mobilisation",c:false}],
+   why:"Auch ohne orale Nahrungsaufnahme ist Mundpflege wichtig – wegen vermindertem Speichelfluss sowie Soor- und Parotitisgefahr und für das Wohlbefinden."},
+
+  // ---------- Zuordnen: enteral oder parenteral ----------
+  {type:"assign", q:"Ernährung über einen zentralen Venenkatheter (ZVK)", answer:"p",
+   why:"Über die Vene zugeführt → parenteral. Der ZVK ist der typische Zugang für eine vollständige parenterale Ernährung."},
+
+  {type:"assign", q:"Ernährung über eine PEG-Sonde", answer:"e",
+   why:"Die Nahrung gelangt über den Magen in den Magen-Darm-Trakt → enteral."},
+
+  {type:"assign", q:"Verabreichung als Dreikammerbeutel (All-in-One)", answer:"p",
+   why:"Dreikammerbeutel (Glukose, Aminosäuren, Fette getrennt) sind die typische Form der parenteralen Ernährung."},
+
+  {type:"assign", q:"Bolusgabe der Nahrung mit der Blasenspritze", answer:"e",
+   why:"Die portionsweise Bolusgabe in die Magensonde nutzt den Magen-Darm-Trakt → enteral."},
+
+  {type:"assign", q:"Indikation: vollständig funktionsunfähiger Darm (z. B. Ileus)", answer:"p",
+   why:"Wenn der Darm nicht genutzt werden kann, müssen die Nährstoffe über die Vene zugeführt werden → parenteral."},
+
+  {type:"assign", q:"Applikation über eine Ernährungspumpe in den Magen", answer:"e",
+   why:"Auch die pumpengesteuerte Gabe läuft über die Sonde in den Magen-Darm-Trakt → enteral."}
+];
+
+// ---- Spielzustand ----
+let order=[], idx=0, points=0, answered=false;
+const $=id=>document.getElementById(id);
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function start(){
+  order=shuffle(QUESTIONS); idx=0; points=0;
+  $("startScreen").style.display="none";
+  $("resultScreen").style.display="none";
+  $("quizScreen").style.display="block";
+  $("progress").style.display="block";
+  $("qTotal").textContent=order.length;
+  render();
+}
+
+function render(){
+  answered=false;
+  const item=order[idx];
+  $("qNow").textContent=idx+1;
+  $("ptNow").textContent=points;
+  $("flowFill").style.width=((idx)/order.length*100)+"%";
+  $("feedback").className="feedback";
+  $("nextWrap").className="next-wrap";
+
+  const tag=$("qtag"), area=$("answerArea");
+  $("qText").textContent=item.q;
+  area.innerHTML="";
+
+  if(item.type==="mc"){
+    tag.textContent="Wissen"; tag.className="qtag qtag--wissen";
+    const opts=shuffle(item.options);
+    const wrap=document.createElement("div"); wrap.className="options";
+    const keys=["A","B","C","D","E"];
+    opts.forEach((o,i)=>{
+      const b=document.createElement("button");
+      b.className="opt"; b.type="button";
+      b.innerHTML='<span class="key">'+keys[i]+'</span><span>'+o.t+'</span>';
+      b.onclick=()=>pickMC(b,o.c,wrap,item.why);
+      wrap.appendChild(b);
+    });
+    area.appendChild(wrap);
+  } else {
+    tag.textContent="Zuordnen"; tag.className="qtag qtag--zuordnen";
+    const wrap=document.createElement("div"); wrap.className="assign";
+    [["e","Enteral","über den Darm"],["p","Parenteral","über die Vene"]].forEach(([val,label,sub])=>{
+      const b=document.createElement("button");
+      b.className="route route--"+val; b.type="button";
+      b.innerHTML='<div class="route__label">'+label+'</div><div class="route__sub">'+sub+'</div>';
+      b.onclick=()=>pickAssign(b,val,item.answer,wrap,item.why);
+      wrap.appendChild(b);
+    });
+    area.appendChild(wrap);
+  }
+}
+
+function lockButtons(wrap){[...wrap.children].forEach(b=>b.disabled=true);}
+
+function pickMC(btn,correct,wrap,why){
+  if(answered)return; answered=true;
+  lockButtons(wrap);
+  [...wrap.children].forEach(b=>{
+    const isCorrect=b.querySelector("span:last-child").textContent;
+  });
+  // markiere richtige Antwort und die gewählte
+  [...wrap.children].forEach(b=>{
+    const txt=b.querySelector("span:last-child").textContent;
+    const opt=order[idx].options.find(o=>o.t===txt);
+    if(opt && opt.c){b.classList.add("correct");}
+  });
+  if(correct){btn.classList.add("correct");points++;}
+  else{btn.classList.add("wrong");[...wrap.children].forEach(b=>{if(!b.classList.contains("correct"))b.classList.add("dim");});}
+  showFeedback(correct,why);
+}
+
+function pickAssign(btn,chosen,answer,wrap,why){
+  if(answered)return; answered=true;
+  lockButtons(wrap);
+  const correct=(chosen===answer);
+  [...wrap.children].forEach(b=>{
+    const isAns=b.classList.contains("route--"+answer);
+    if(isAns)b.classList.add("correct"); else b.classList.add("dim");
+  });
+  if(!correct){btn.classList.remove("dim");btn.classList.add("wrong");}
+  if(correct)points++;
+  showFeedback(correct,why);
+}
+
+function showFeedback(correct,why){
+  $("ptNow").textContent=points;
+  const fb=$("feedback");
+  fb.className="feedback show "+(correct?"feedback--ok":"feedback--no");
+  $("fbHead").textContent=correct?"✓ Richtig":"✗ Nicht ganz";
+  $("fbBody").textContent=why;
+  $("nextWrap").className="next-wrap show";
+  $("nextBtn").textContent=(idx===order.length-1)?"Ergebnis ansehen":"Weiter";
+}
+
+function next(){
+  if(idx<order.length-1){idx++;render();}
+  else finish();
+}
+
+function finish(){
+  $("quizScreen").style.display="none";
+  $("progress").style.display="none";
+  $("resultScreen").style.display="block";
+  const total=order.length;
+  const pct=Math.round(points/total*100);
+  $("rPct").textContent=pct+"%";
+  $("rPts").textContent=points+" / "+total+" Punkte";
+  $("ring").style.setProperty("--deg",(pct*3.6)+"deg");
+  let v,s;
+  if(pct>=90){v="Hervorragend";s="Du bist sicher im Thema – sowohl bei den Zugangswegen als auch bei der Pflege.";}
+  else if(pct>=70){v="Gut gemacht";s="Solides Wissen. Schau dir die Fragen, die du falsch hattest, noch einmal in deinen Unterlagen an.";}
+  else if(pct>=50){v="Gute Basis";s="Wiederhole vor allem den Unterschied der Zugangswege (enteral über den Darm, parenteral über die Vene) und die typischen Komplikationen.";}
+  else {v="Dranbleiben lohnt sich";s="Geh das Thema noch einmal mit deinen Unterrichtsunterlagen durch und spiel danach erneut – Wiederholung festigt es.";}
+  $("rVerdict").textContent=v;
+  $("rSub").textContent=s;
+}
+
+$("startBtn").onclick=start;
+$("nextBtn").onclick=next;
+$("againBtn").onclick=start;
+</script>
+</body>
+</html>
